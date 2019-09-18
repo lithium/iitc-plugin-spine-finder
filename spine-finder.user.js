@@ -36,6 +36,31 @@ var llstring = function(latlng) {
   }
 }
 
+var drawToolsLayerToJson = function(layer) {
+  if (layer._latlngs.length == 1) {
+    return {
+      type: "circle",
+      latLng: layer._latlng,
+      radius: layer._mRadius,
+      color: layer.options.color
+    }
+  }
+  else if (layer._latlngs.length == 2) {
+    return {
+      type: "polyline", 
+      latLngs: layer._latlngs,
+      color: layer.options.color
+    }
+  }
+  else if (layer._latlngs.length > 2) {
+    return {
+      type: "polygon",
+      latLngs: layer._latlngs,
+      color: layer.options.color
+    }
+  }
+  return layer
+}
 
 /*
  * abstract class UIComponent
@@ -84,15 +109,50 @@ class SpineFinderPlugin extends UIComponent {
   constructor(props) {
     super(props)
 
+    window.pluginCreateHook('pluginDrawTools'); // initialize hook if needed first
+    window.addHook('pluginDrawTools', this.handleDrawTools.bind(this));
+
     this.setupDesktop();
     this.setupMobile();
   }
+
+  static initialState() {
+    return {
+      spines: [],
+      searchAreas: [],
+    }
+  }
+
 
   setupDesktop() {
     var a = $('<a tabindex="0">Spine Finder</a>').click(this.showDialog.bind(this));
     $('#toolbox').append(a);
   }
 
+
+  handleDrawTools(payload) {
+    console.log("SPINE handleDrawTools", payload)
+    if (!payload) {
+      return;
+    }
+    if (payload.event === "layerCreated") {
+      this.addDrawToolsLayer(drawToolsLayerToJson(payload.layer))
+    }
+  }
+
+  loadDrawTools(drawToolsItems) {
+    drawToolsItems = drawToolsItems || JSON.parse(localStorage['plugin-draw-tools-layer'])
+    drawToolsItems.forEach(l => this.addDrawToolsLayer(l))
+  }
+  addDrawToolsLayer(layer) {
+    console.log("SPINE addLayer", layer)
+
+    if (layer.type === "polyline") {
+      this.setState({
+        spines: this.state.spines.concat([layer])
+      })
+    }
+  }
 
   setupMobile() {
     if (window.useAndroidPanes()) {
@@ -143,6 +203,8 @@ class SpineFinderPlugin extends UIComponent {
       return;
     }
 
+    this.loadDrawTools();
+
     this.dialog = dialog({
       title: "Spine Finder",
       html: this.element,
@@ -156,11 +218,15 @@ class SpineFinderPlugin extends UIComponent {
   }
 
   render() {
-    var ret = document.createElement('div')
+    var ret = $('<div class="spine-finder"></div>');
+    ret.append('<h4>Spines</h4>')
 
-    ret.innerHTML = "spine finder..."
+    var spines_ul = ret.append('<ul class="spines"></ul>')
+    this.state.spines.forEach(spine => {
+      spines_ul.append(`<li>${spine.latLngs}</li>`)
+    })
 
-    return ret
+    return ret[0]
   }
 
 
