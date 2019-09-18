@@ -282,16 +282,22 @@ class SpineFinderPlugin extends UIComponent {
     var ret = $('<div class="spine-finder"></div>');
 
     ret.append('<h4>Spines</h4>')
-    var spines_ul = ret.append('<ul class="spines"></ul>')
-    this.state.spines.forEach(spine => {
-      spines_ul.append(`<li>${spine.label}</li>`)
+    var spines_select = $('<select class="spines" size="5"></select>')
+    this.state.spines.forEach((spine,idx) => {
+      var selected = idx == this.state.selectedSpine ? 'selected="selected"' : ''
+      spines_select.append(`<option value="${idx}" ${selected}>${spine.label}</option>`)
     })
+    spines_select.change(() => this.setState({'selectedSpine': spines_select.val()}))
+    ret.append(spines_select)
 
     ret.append('<h4>Search Areas</h4>')
-    var areas_ul = ret.append('<ul class="areas"></ul>')
-    this.state.searchAreas.forEach(area => {
-      areas_ul.append(`<li>${area.label}</li>`)
+    var areas_select = $('<select class="areas" size="5"></select>')
+    this.state.searchAreas.forEach((area,idx) => {
+      var selected = idx == this.state.selectedArea ? 'selected="selected"' : ''
+      areas_select.append(`<option value="${idx}" ${selected}>${area.label}</option>`)
     })
+    areas_select.change(() => this.setState({'selectedArea': areas_select.val()}))
+    ret.append(areas_select)
 
 
     return ret[0]
