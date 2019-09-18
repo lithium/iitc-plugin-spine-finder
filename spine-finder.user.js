@@ -116,7 +116,6 @@ class Spine {
 class SearchArea {
   constructor(circle) {
     this.region = circle
-    console.log("SPINE region", this.region)
   }
 
   get areaInKm() {
@@ -124,7 +123,20 @@ class SearchArea {
   }
 
   get label() {
-    return `${this.areaInKm.toFixed(1)}km @${llstring(this.region.latLng)}`
+    return `${this.areaInKm.toFixed(1)}km @${llstring(this.region.latLng)} Portals:${this.portals.length}`
+  }
+
+  get portals() {
+    if (window.portals) {
+      return Object.getOwnPropertyNames(window.portals).map(guid => {
+        var portal = window.portals[guid];
+        var distance = portal._latlng.distanceTo(this.region.latLng)
+        if (distance < this.region.radius) {
+          return portal
+        } else return undefined
+      }).filter(_ => _ !== undefined)
+    }
+    else return []
   }
 }
 
@@ -178,7 +190,7 @@ class SpineFinderPlugin extends UIComponent {
   }
 
   handleDrawTools(payload) {
-    console.log("SPINE handleDrawTools", payload)
+    // console.log("SPINE handleDrawTools", payload)
     if (!payload) {
       return;
     }
@@ -192,7 +204,7 @@ class SpineFinderPlugin extends UIComponent {
     drawToolsItems.forEach(l => this.addDrawToolsLayer(l))
   }
   addDrawToolsLayer(layer) {
-    console.log("SPINE addLayer", layer)
+    // console.log("SPINE addLayer", layer)
 
     if (layer.type === "polyline") {
       this.setState({
