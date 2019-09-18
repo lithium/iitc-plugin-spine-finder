@@ -98,6 +98,7 @@ class SpineFinderPlugin extends UIComponent {
     if (window.useAndroidPanes()) {
       this.mobilePane = document.createElement('div');
       this.mobilePane.className = 'plugin-spinefinder-pane';
+      this.mobilePane.appendChild(this.element)
 
       var button = this.mobilePane.appendChild(document.createElement('button'));
       button.textContext = 'Spine Finder';
