@@ -100,6 +100,19 @@ class UIComponent {
 }
 
 
+
+class Spine {
+  constructor(polyline) {
+    this.polyline = polyline
+  }
+
+  get label() {
+    var src = SpineFinderPlugin.portalNameByLl(this.polyline.latLngs[0])
+    var dest = SpineFinderPlugin.portalNameByLl(this.polyline.latLngs[1])
+    return `${src} <-> ${dest}`
+  }
+}
+
 /*
  * SpineFinderPlugin 
  *    
@@ -109,8 +122,12 @@ class SpineFinderPlugin extends UIComponent {
   constructor(props) {
     super(props)
 
+    SpineFinderPlugin.portalsLl = {};
+    window.addHook('portalAdded', this.handlePortalAdded.bind(this));
     window.pluginCreateHook('pluginDrawTools'); // initialize hook if needed first
     window.addHook('pluginDrawTools', this.handleDrawTools.bind(this));
+
+    this.loadDrawTools();
 
     this.setupDesktop();
     this.setupMobile();
@@ -123,12 +140,27 @@ class SpineFinderPlugin extends UIComponent {
     }
   }
 
+  static portalByLl(latlng) {
+    return SpineFinderPlugin.portalsLl[llstring(latlng)]
+  }
+  static portalNameByLl(latlng) {
+    var ll = llstring(latlng)
+    var portal = SpineFinderPlugin.portalsLl[ll]
+    return portal ? portal.options.data.title : ll
+  }
+
 
   setupDesktop() {
     var a = $('<a tabindex="0">Spine Finder</a>').click(this.showDialog.bind(this));
     $('#toolbox').append(a);
   }
 
+  handlePortalAdded(data) {
+    var portal = data.portal;
+    var ll = llstring( portal._latlng );
+    SpineFinderPlugin.portalsLl[ll] = portal
+    this.setState({});  // TODO: only rerender if needs updating
+  }
 
   handleDrawTools(payload) {
     console.log("SPINE handleDrawTools", payload)
@@ -149,7 +181,7 @@ class SpineFinderPlugin extends UIComponent {
 
     if (layer.type === "polyline") {
       this.setState({
-        spines: this.state.spines.concat([layer])
+        spines: this.state.spines.concat([new Spine(layer)])
       })
     }
   }
@@ -203,8 +235,6 @@ class SpineFinderPlugin extends UIComponent {
       return;
     }
 
-    this.loadDrawTools();
-
     this.dialog = dialog({
       title: "Spine Finder",
       html: this.element,
@@ -223,7 +253,7 @@ class SpineFinderPlugin extends UIComponent {
 
     var spines_ul = ret.append('<ul class="spines"></ul>')
     this.state.spines.forEach(spine => {
-      spines_ul.append(`<li>${spine.latLngs}</li>`)
+      spines_ul.append(`<li>${spine.label}</li>`)
     })
 
     return ret[0]
