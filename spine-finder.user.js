@@ -37,7 +37,7 @@ var llstring = function(latlng) {
 }
 
 var drawToolsLayerToJson = function(layer) {
-  if (layer._latlngs.length == 1) {
+  if (layer._mRadius !== undefined) {
     return {
       type: "circle",
       latLng: layer._latlng,
@@ -113,6 +113,21 @@ class Spine {
   }
 }
 
+class SearchArea {
+  constructor(circle) {
+    this.region = circle
+    console.log("SPINE region", this.region)
+  }
+
+  get areaInKm() {
+    return (Math.PI * Math.pow(this.region.radius, 2)) / 1000 / 1000
+  }
+
+  get label() {
+    return `${this.areaInKm.toFixed(1)}km @${llstring(this.region.latLng)}`
+  }
+}
+
 /*
  * SpineFinderPlugin 
  *    
@@ -173,7 +188,7 @@ class SpineFinderPlugin extends UIComponent {
   }
 
   loadDrawTools(drawToolsItems) {
-    drawToolsItems = drawToolsItems || JSON.parse(localStorage['plugin-draw-tools-layer'])
+    drawToolsItems = drawToolsItems || JSON.parse(localStorage['plugin-draw-tools-layer'] || "[]")
     drawToolsItems.forEach(l => this.addDrawToolsLayer(l))
   }
   addDrawToolsLayer(layer) {
@@ -182,6 +197,10 @@ class SpineFinderPlugin extends UIComponent {
     if (layer.type === "polyline") {
       this.setState({
         spines: this.state.spines.concat([new Spine(layer)])
+      })
+    } else if (layer.type == "circle") {
+      this.setState({
+        searchAreas: this.state.searchAreas.concat([new SearchArea(layer)])
       })
     }
   }
@@ -249,12 +268,19 @@ class SpineFinderPlugin extends UIComponent {
 
   render() {
     var ret = $('<div class="spine-finder"></div>');
-    ret.append('<h4>Spines</h4>')
 
+    ret.append('<h4>Spines</h4>')
     var spines_ul = ret.append('<ul class="spines"></ul>')
     this.state.spines.forEach(spine => {
       spines_ul.append(`<li>${spine.label}</li>`)
     })
+
+    ret.append('<h4>Search Areas</h4>')
+    var areas_ul = ret.append('<ul class="areas"></ul>')
+    this.state.searchAreas.forEach(area => {
+      areas_ul.append(`<li>${area.label}</li>`)
+    })
+
 
     return ret[0]
   }
