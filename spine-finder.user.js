@@ -102,14 +102,24 @@ class UIComponent {
 
 
 class Spine {
-  constructor(polyline) {
-    this.polyline = polyline
+  constructor(layer) {
+    this.layer = layer
   }
 
   get label() {
-    var src = SpineFinderPlugin.portalNameByLl(this.polyline.latLngs[0])
-    var dest = SpineFinderPlugin.portalNameByLl(this.polyline.latLngs[1])
+    var src = SpineFinderPlugin.portalNameByLl(this.layer.latLngs[0])
+    var dest = SpineFinderPlugin.portalNameByLl(this.layer.latLngs[1])
     return `${src} <-> ${dest}`
+  }
+
+  get portals() {
+    if (window.portals) {
+      return this.layer.latLngs.map(ll => SpineFinderPlugin.portalByLl(ll))
+    } else return []
+  }
+
+  get polyline() {
+    return L.polyline(this.layer.latLngs)
   }
 }
 
@@ -123,7 +133,7 @@ class SearchArea {
   }
 
   get label() {
-    return `${this.areaInKm.toFixed(1)}km @${llstring(this.region.latLng)} Portals:${this.portals.length}`
+    return `${this.portals.length} Portals ${this.areaInKm.toFixed(1)}km @${llstring(this.region.latLng)}`
   }
 
   get portals() {
@@ -217,6 +227,12 @@ class SpineFinderPlugin extends UIComponent {
     }
   }
 
+  runSearch() {
+    var area = this.state.searchAreas[this.state.selectedArea]
+    var spine = this.state.spines[this.state.selectedSpine]
+    console.log("SPINE runSearch", spine.portals, area.portals)
+  }
+
   setupMobile() {
     if (window.useAndroidPanes()) {
       this.mobilePane = document.createElement('div');
@@ -299,6 +315,11 @@ class SpineFinderPlugin extends UIComponent {
     areas_select.change(() => this.setState({'selectedArea': areas_select.val()}))
     ret.append(areas_select)
 
+    if (this.state.selectedSpine !== undefined && this.state.selectedArea !== undefined) {
+      var button = $('<button>Search</button>')
+      button.click(() => this.runSearch())
+      ret.append(button)
+    }
 
     return ret[0]
   }
