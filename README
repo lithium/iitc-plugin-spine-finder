@@ -1,0 +1,14 @@
+
+
+
+Inputs:
+
+	spine line - list all drawn line segments to choose from
+	set of portals - a circle/polygon and the portals contained within it
+
+
+Outputs:
+	a list of possible plans - number of fields, total area of all fields, list of portals
+
+
+When a plan is selected, draw using drawtools

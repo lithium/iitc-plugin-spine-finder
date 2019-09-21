@@ -227,10 +227,33 @@ class SpineFinderPlugin extends UIComponent {
     }
   }
 
+  link_crosses(links, link) {
+    return links.map(l => window.plugin.crossLinks.testPolyLine(l, link)).filter(_ => _ === true).length > 0
+  }
+
   runSearch() {
     var area = this.state.searchAreas[this.state.selectedArea]
     var spine = this.state.spines[this.state.selectedSpine]
     console.log("SPINE runSearch", spine.portals, area.portals)
+
+    var portals = area.portals.concat()
+    var links = []
+    while (portals.length > 0) {
+      var p = portals.shift()
+      var latlngs = [
+        spine.portals[0]._latlng,
+        p._latlng,
+        spine.portals[1]._latlng,
+      ]
+      var link = L.geodesicPolyline(latlngs, L.extend({},window.plugin.drawTools.lineOptions,{}));
+
+      if (!this.link_crosses(links, link)) {
+        links.push(link)
+      }
+    }
+    console.log("SPINE runSearch.complete", links)
+    links.forEach(l => window.plugin.drawTools.drawnItems.addLayer(l))
+    window.plugin.drawTools.save();
   }
 
   setupMobile() {
