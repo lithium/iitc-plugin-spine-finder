@@ -349,7 +349,7 @@ class SpineFinderPlugin extends UIComponent {
     console.log("SPINE plans total count", plans.length)
 
     this.setState({
-      plans: plans.slice(0,20)
+      plans: plans.slice(0, this.state.maxResults || 25)
     })
   }
 
@@ -477,10 +477,8 @@ class SpineFinderPlugin extends UIComponent {
     areas_select.change(() => this.setState({'selectedArea': areas_select.val()}))
     ret.append(areas_select)
 
-    console.log("SPINE renderInputs", this.state)
     if (this.state.selectedSpine !== undefined && this.state.selectedArea !== undefined) {
       var container = $('<div class="container"></div>')
-
 
       var div = $('<div class="left searchactions"></div>')
 
@@ -508,19 +506,27 @@ class SpineFinderPlugin extends UIComponent {
     var ret = $('<div class="spine-results"></div>');
     if (this.state.plans.length > 0) {
       ret.append('<h4>Results</h4>')
-      var results_select = $('<select class="results" size="10"></select>')
+      var results_select = $('<select class="results" size="7"></select>')
       this.state.plans.forEach((plan, idx) => {
         var selected = idx == this.state.selectedPlan ? 'selected="selected"' : ''
         var names = plan.map(p => p.options.data.title).join(", ")
-        results_select.append(`<option value="${idx}" ${selected}>${plan.length} layers: ${names}</option>`)
+        results_select.append(`<option value="${idx}" ${selected}>${plan.length} layers</option>`)
+        container.append(info)
       })
       results_select.change(() => this.setState({'selectedPlan': results_select.val()}))
       ret.append(results_select)
 
       if (this.state.selectedPlan !== undefined) {
+        ret.append('<h4>Plan Details</h4>')
         var container = $('<div class="container"></div>')
 
-        var button = $('<button>Draw</button>')
+        var info = $('<div class="info"></div>')
+        plan.map.forEach((p, idx) => {
+          info.append(`<p class="portal">${p.options.data.title}</p>`)
+        })
+        container.append(info)
+
+        var button = $('<button class="submit">Draw</button>')
         button.click(() => this.drawSelectedPlan())
         container.append(button)
 
