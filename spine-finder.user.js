@@ -190,46 +190,56 @@ class SearchArea {
 
 class TreeNode {
   constructor(options) {
+    this.spine = options.spine
     this.parent = options.parent
     this.portal = options.portal
-    this.children = options.children
+    this.children = options.children || []
   }
 
-  getAllLinks(spine, linkOpts) {
-    return (this.parent ? this.parent.getAllLinks(spine, linkOpts) : []).concat(this.getLinks(spine, linkOpts))
+  getParentLinks() {
+    return (this.parent ? this.parent.getParentLinks() : []).concat(this.getLinks())
+  }
+  getPlanPortals() {
+    return (this.parent ? this.parent.getPlanPortals() : []).concat(this.portal ? [this.portal] : [])
   }
 
-  getLinks(spine, linkOpts) {
-    var linkOpts = linkOpts || L.extend({},window.plugin.drawTools.lineOptions)
+  getLinks() {
     return this.portal ? [
-      L.geodesicPolyline([spine.portals[0]._latlng, this.portal._latlng], linkOpts),
-      L.geodesicPolyline([spine.portals[1]._latlng, this.portal._latlng], linkOpts),
+      L.geodesicPolyline([this.spine.portals[0]._latlng, this.portal._latlng]),
+      L.geodesicPolyline([this.spine.portals[1]._latlng, this.portal._latlng]),
     ] : []
   }
 
-  get childPortals() {
-    return this.children.map(c => [c.portal].concat(c.childPortals))
+  getPlans() {
+    var results = []
+    TreeNode.findLeafNodes(this, results)
+    return results.map(r => r.getPlanPortals())
   }
 
-  getPlans() {
-    return this.childPortals.map(p => flattenDeep(p))
+
+  static findLeafNodes(node, results) {
+    if (node.children && node.children.length > 0) {
+      node.children.map(c => TreeNode.findLeafNodes(c, results))
+    } else {
+      results.push(node)
+    }
   }
 
   static create(spine, portals, parent, portal) {
-    var node = new TreeNode({parent: parent, portal: portal})
+    var node = new TreeNode({spine: spine, parent: parent, portal: portal})
     node.children = portals.map(p => {
       var newLinks = [
         L.geodesicPolyline([spine.portals[0]._latlng, p._latlng]),
         L.geodesicPolyline([spine.portals[1]._latlng, p._latlng]),
       ]
-      if (!doLinksCross(node.getAllLinks(spine), newLinks)) {
+      if (!doLinksCross(node.getParentLinks(), newLinks)) {
         var poly = L.geodesicPolygon([
           spine.portals[0]._latlng,
           spine.portals[1]._latlng,
           p._latlng
         ])
         var possiblePortals = portals.filter(x => 
-          x.options.guid != p.options.guid && isMarkerInsidePolygon(x, poly)
+          isMarkerInsidePolygon(x, poly)
         )
         return TreeNode.create(spine, possiblePortals, node, p)
       } else return undefined
@@ -315,8 +325,6 @@ class SpineFinderPlugin extends UIComponent {
     }
   }
 
-
-
   runSearch() {
     var area = this.state.searchAreas[this.state.selectedArea]
     var spine = this.state.spines[this.state.selectedSpine]
@@ -325,9 +333,31 @@ class SpineFinderPlugin extends UIComponent {
     var tree = TreeNode.create(spine, area.portals)
     console.log("SPINE tree", tree)
 
+    console.log("SPINE plans", tree.getPlans())
+
     this.setState({
       resultsTree: tree
     })
+  }
+
+  drawSelectedPlan() {
+    var plan = this.state.resultsTree.getPlans()[this.state.selectedPlan]
+    var spine = this.state.resultsTree.spine
+    console.log("SPINE drawSelected", spine, plan)
+
+    var linkOpts = linkOpts || L.extend({},window.plugin.drawTools.lineOptions)
+    var layers = plan.map(p => 
+      L.geodesicPolyline([
+        spine.portals[0]._latlng, 
+        p._latlng,
+        spine.portals[1]._latlng
+      ], linkOpts)
+    )
+
+    layers.forEach(l => {
+      window.plugin.drawTools.drawnItems.addLayer(l)
+    })
+    // window.plugin.drawTools.save();
   }
 
   setupMobile() {
@@ -383,7 +413,7 @@ class SpineFinderPlugin extends UIComponent {
       title: "Spine Finder",
       html: this.element,
       height: 'auto',
-      width: '400px',
+      width: '600px',
       closeCallback: () => this.dialog = undefined
     }).dialog('option', 'buttons', {
       'OK': function() { $(this).dialog('close') },
@@ -412,21 +442,28 @@ class SpineFinderPlugin extends UIComponent {
     areas_select.change(() => this.setState({'selectedArea': areas_select.val()}))
     ret.append(areas_select)
 
-    if (this.state.resultsTree !== undefined) {
-      ret.append('<h4>Results</h4>')
-      var results_select = $('<select class="results" size="10"></select>')
-      this.state.resultsTree.getPlans().forEach((plan, idx) => {
-        var selected = false
-        var names = plan.map(p => p.options.data.title).join(", ")
-        results_select.append(`<option value="${idx}" ${selected}>${plan.length} layers: ${names}</option>`)
-      })
-      ret.append(results_select)
-    }
-
     if (this.state.selectedSpine !== undefined && this.state.selectedArea !== undefined) {
       var button = $('<button>Search</button>')
       button.click(() => this.runSearch())
       ret.append(button)
+    }
+
+    if (this.state.resultsTree !== undefined) {
+      ret.append('<h4>Results</h4>')
+      var results_select = $('<select class="results" size="10"></select>')
+      this.state.resultsTree.getPlans().forEach((plan, idx) => {
+        var selected = idx == this.state.selectedPlan ? 'selected="selected"' : ''
+        var names = plan.map(p => p.options.data.title).join(", ")
+        results_select.append(`<option value="${idx}" ${selected}>${plan.length} layers: ${names}</option>`)
+      })
+      results_select.change(() => this.setState({'selectedPlan': results_select.val()}))
+      ret.append(results_select)
+
+      if (this.state.selectedPlan !== undefined) {
+        var button = $('<button>Draw</button>')
+        button.click(() => this.drawSelectedPlan())
+        ret.append(button)
+      }
     }
 
     return ret[0]
