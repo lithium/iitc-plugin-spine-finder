@@ -291,7 +291,7 @@ class SpineFinderPlugin extends UIComponent {
   static portalNameByLl(latlng) {
     var ll = llstring(latlng)
     var portal = SpineFinderPlugin.portalsLl[ll]
-    return portal ? portal.options.data.title : ll
+    return (portal && portal.options.data.title) ? portal.options.data.title : ll
   }
 
 
