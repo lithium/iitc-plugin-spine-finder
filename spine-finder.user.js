@@ -245,7 +245,7 @@ class TreeNode {
           p._latlng
         ])
         var possiblePortals = portals.filter(x => 
-          isMarkerInsidePolygon(x, poly)
+          x.options.guid != p.options.guid && isMarkerInsidePolygon(x, poly)
         )
         return TreeNode.create(spine, possiblePortals, node, p)
       } else return undefined
