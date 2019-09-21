@@ -273,7 +273,7 @@ class SpineFinderPlugin extends UIComponent {
     return {
       spines: [],
       searchAreas: [],
-      resultsTree: undefined,
+      plans: [],
       selectedSpine: undefined,
       selectedArea: undefined,
       selectedPlan: undefined
@@ -331,23 +331,34 @@ class SpineFinderPlugin extends UIComponent {
   }
 
   runSearch() {
-    var area = this.state.searchAreas[this.state.selectedArea]
-    var spine = this.state.spines[this.state.selectedSpine]
+    var area = this.getSelectedArea()
+    var spine = this.getSelectedSpine()
     console.log("SPINE runSearch", spine.portals, area.portals)
 
     var tree = TreeNode.create(spine, area.portals)
     console.log("SPINE tree", tree)
 
-    console.log("SPINE plans", tree.getPlans())
+    var plans = tree.getPlans()
+    console.log("SPINE plans total count", plans.length)
 
     this.setState({
-      resultsTree: tree
+      plans: plans.slice(0,20)
     })
   }
 
+  getSelectedArea() {
+    return this.state.selectedArea ? this.state.searchAreas[this.state.selectedArea] : undefined
+  }
+  getSelectedSpine() {
+    return this.state.selectedSpine ? this.state.spines[this.state.selectedSpine] : undefined
+  }
+  getSelectedPlan() {
+    return this.state.selectedPlan ? this.state.plans[this.state.selectedPlan] : undefined
+  }
+
   drawSelectedPlan() {
-    var plan = this.state.resultsTree.getPlans()[this.state.selectedPlan]
-    var spine = this.state.resultsTree.spine
+    var plan = this.getSelectedPlan()
+    var spine = this.getSelectedSpine()
     console.log("SPINE drawSelected", spine, plan)
 
     var linkOpts = linkOpts || L.extend({},window.plugin.drawTools.lineOptions)
@@ -429,7 +440,6 @@ class SpineFinderPlugin extends UIComponent {
   closeDialog() {
     this.dialog = undefined
     this.setState({
-      resultsTree: undefined,
       selectedSpine: undefined,
       selectedArea: undefined,
       selectedPlan: undefined
@@ -463,10 +473,10 @@ class SpineFinderPlugin extends UIComponent {
       ret.append(button)
     }
 
-    if (this.state.resultsTree !== undefined) {
+    if (this.state.plans.length > 0) {
       ret.append('<h4>Results</h4>')
       var results_select = $('<select class="results" size="10"></select>')
-      this.state.resultsTree.getPlans().forEach((plan, idx) => {
+      this.state.plans.forEach((plan, idx) => {
         var selected = idx == this.state.selectedPlan ? 'selected="selected"' : ''
         var names = plan.map(p => p.options.data.title).join(", ")
         results_select.append(`<option value="${idx}" ${selected}>${plan.length} layers: ${names}</option>`)
