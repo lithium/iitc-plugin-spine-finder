@@ -214,6 +214,28 @@ class TreeNode {
   getPlans() {
     return this.childPortals.map(p => flattenDeep(p))
   }
+
+  static create(spine, portals, parent, portal) {
+    var node = new TreeNode({parent: parent, portal: portal})
+    node.children = portals.map(p => {
+      var newLinks = [
+        L.geodesicPolyline([spine.portals[0]._latlng, p._latlng]),
+        L.geodesicPolyline([spine.portals[1]._latlng, p._latlng]),
+      ]
+      if (!doLinksCross(node.getAllLinks(spine), newLinks)) {
+        var poly = L.geodesicPolygon([
+          spine.portals[0]._latlng,
+          spine.portals[1]._latlng,
+          p._latlng
+        ])
+        var possiblePortals = portals.filter(x => 
+          x.options.guid != p.options.guid && isMarkerInsidePolygon(x, poly)
+        )
+        return TreeNode.create(spine, possiblePortals, node, p)
+      } else return undefined
+    }).filter(_ => _ !== undefined)
+    return node
+  }
 }
 
 /*
@@ -294,37 +316,14 @@ class SpineFinderPlugin extends UIComponent {
   }
 
 
-  newNode(spine, portals, parent, portal) {
-    var node = new TreeNode({parent: parent, portal: portal})
-    node.children = portals.map(p => {
-      var newLinks = [
-        L.geodesicPolyline([spine.portals[0]._latlng, p._latlng]),
-        L.geodesicPolyline([spine.portals[1]._latlng, p._latlng]),
-      ]
-      if (!doLinksCross(node.getAllLinks(spine), newLinks)) {
-        var poly = L.geodesicPolygon([
-          spine.portals[0]._latlng,
-          spine.portals[1]._latlng,
-          p._latlng
-        ])
-        var possiblePortals = portals.filter(x => 
-          x.options.guid != p.options.guid && isMarkerInsidePolygon(x, poly)
-        )
-        return this.newNode(spine, possiblePortals, node, p)
-      } else return undefined
-    }).filter(_ => _ !== undefined)
-    return node
-  }
 
   runSearch() {
     var area = this.state.searchAreas[this.state.selectedArea]
     var spine = this.state.spines[this.state.selectedSpine]
     console.log("SPINE runSearch", spine.portals, area.portals)
 
-    var tree = this.newNode(spine, area.portals)
+    var tree = TreeNode.create(spine, area.portals)
     console.log("SPINE tree", tree)
-    var plans = tree.childPortals.map(p => flattenDeep(p).map(p => p.options.data.title))
-    console.log("SPINE plans", plans)
 
     this.setState({
       resultsTree: tree
