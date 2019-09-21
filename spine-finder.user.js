@@ -440,7 +440,7 @@ class SpineFinderPlugin extends UIComponent {
       title: "Spine Finder",
       html: this.element,
       height: 'auto',
-      width: '600px',
+      width: '700px',
       closeCallback: () => this.closeDialog()
     }).dialog('option', 'buttons', {
       'OK': function() { $(this).dialog('close') },
@@ -508,25 +508,25 @@ class SpineFinderPlugin extends UIComponent {
     var ret = $('<div class="spine-results"></div>');
     if (this.state.plans.length > 0) {
       ret.append('<h4>Results</h4>')
-      var results_select = $('<select class="results" size="7"></select>')
+      var results_select = $('<select class="results" size="5"></select>')
       this.state.plans.forEach((plan, idx) => {
         var selected = idx == this.state.selectedPlan ? 'selected="selected"' : ''
         var names = plan.map(p => p.options.data.title).join(", ")
         results_select.append(`<option value="${idx}" ${selected}>${plan.length} layers</option>`)
-        container.append(info)
       })
       results_select.change(() => this.setState({'selectedPlan': results_select.val()}))
       ret.append(results_select)
 
-      if (this.state.selectedPlan !== undefined) {
+      var plan = this.getSelectedPlan()
+      if (plan !== undefined) {
         ret.append('<h4>Plan Details</h4>')
         var container = $('<div class="container"></div>')
 
-        var info = $('<div class="info"></div>')
-        plan.map.forEach((p, idx) => {
-          info.append(`<p class="portal">${p.options.data.title}</p>`)
+        var list = $('<ol class="portals"></ol>')
+        plan.forEach((p, idx) => {
+          list.append(`<li>${p.options.data.title}</li>`)
         })
-        container.append(info)
+        container.append(list)
 
         var button = $('<button class="submit">Draw</button>')
         button.click(() => this.drawSelectedPlan())
@@ -587,6 +587,10 @@ SpineFinderPlugin.boot = function() {
     }
     .spine-finder .left {
       float: left;
+    }
+
+    .spine-finder ul.portals {
+      width: 20em;
     }
   `;
   var style = document.createElement('style')
