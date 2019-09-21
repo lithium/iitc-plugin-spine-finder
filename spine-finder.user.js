@@ -6,7 +6,7 @@
 // @namespace      https://github.com/lithium/iitc-plugin-spine-finder
 // @updateURL      @@UPDATEURL@@
 // @downloadURL    @@DOWNLOADURL@@
-// @description    [@@BUILDNAME@@-@@BUILDDATE@@] Build plans with drawtools
+// @description    [@@BUILDNAME@@-@@BUILDDATE@@] Find maximum possible layers from a baseline 
 // @include        https://*.ingress.com/intel*
 // @include        http://*.ingress.com/intel*
 // @match          https://*.ingress.com/intel*
@@ -279,6 +279,8 @@ class SpineFinderPlugin extends UIComponent {
       spines: [],
       searchAreas: [],
       plans: [],
+      maxResults: 25,
+      avoidLinks: false, 
       selectedSpine: undefined,
       selectedArea: undefined,
       selectedPlan: undefined
@@ -430,6 +432,8 @@ class SpineFinderPlugin extends UIComponent {
       return;
     }
 
+    this.setState({})
+
     this.dialog = dialog({
       title: "Spine Finder",
       html: this.element,
@@ -452,8 +456,8 @@ class SpineFinderPlugin extends UIComponent {
     })
   }
 
-  render() {
-    var ret = $('<div class="spine-finder"></div>');
+  renderInputs() {
+    var ret = $('<div class="spine-inputs"></div>');
 
     ret.append('<h4>Spines</h4>')
     var spines_select = $('<select class="spines" size="5"></select>')
@@ -473,12 +477,35 @@ class SpineFinderPlugin extends UIComponent {
     areas_select.change(() => this.setState({'selectedArea': areas_select.val()}))
     ret.append(areas_select)
 
+    console.log("SPINE renderInputs", this.state)
     if (this.state.selectedSpine !== undefined && this.state.selectedArea !== undefined) {
-      var button = $('<button>Search</button>')
+      var container = $('<div class="container"></div>')
+
+
+      var div = $('<div class="left searchactions"></div>')
+
+      var checked = this.state.avoidLinks ? 'checked="checked"' : ""
+      var check = $(`<input id="spine-finder-avoid" type="checkbox" ${checked}><label for="spine-finder-avoid">Avoid Existing Links</label>`)
+      check.change(() => this.setState({'avoidLinks': check.is(':checked')}))
+      div.append($('<div></div>').append(check))
+
+      var input = $(`<input id="spine-finder-maxresults" size="2" type="number" value="${this.state.maxResults}"></input><label>max results</label>`)
+      input.change(() => this.setState({'maxResults': input.val()}))
+      div.append($('<div></div>').append(input))
+      container.append(div)
+
+      var button = $('<button class="submit">Search</button>')
       button.click(() => this.runSearch())
-      ret.append(button)
+      container.append(button)
+
+      ret.append(container)
     }
 
+    return ret
+  }
+
+  renderResults() {
+    var ret = $('<div class="spine-results"></div>');
     if (this.state.plans.length > 0) {
       ret.append('<h4>Results</h4>')
       var results_select = $('<select class="results" size="10"></select>')
@@ -491,11 +518,25 @@ class SpineFinderPlugin extends UIComponent {
       ret.append(results_select)
 
       if (this.state.selectedPlan !== undefined) {
+        var container = $('<div class="container"></div>')
+
         var button = $('<button>Draw</button>')
         button.click(() => this.drawSelectedPlan())
-        ret.append(button)
+        container.append(button)
+
+        ret.append(container)
       }
     }
+ 
+    return ret
+  }
+
+  render() {
+    var ret = $('<div class="spine-finder"></div>');
+
+    ret.append(this.renderInputs())
+
+    ret.append(this.renderResults())
 
     return ret[0]
   }
@@ -505,6 +546,46 @@ class SpineFinderPlugin extends UIComponent {
 
 // plugin boot - called by iitc
 SpineFinderPlugin.boot = function() {
+
+  var css = `
+    .spine-finder h4 { 
+      font-size: 20px; 
+      margin-bottom: .6em;
+    }
+    .spine-finder .spine-inputs {
+      float: left;
+      margin-right: 1em;
+    }
+    .spine-finder .spine-results {
+      float: left;
+    }
+
+    .spine-finder select {
+      width: 20em;
+    } 
+    .spine-finder input#spine-finder-maxresults {
+      width: 4em;
+    }
+    .spine-finder button.submit {
+      padding: 0.6em;
+      margin: 0.5em;
+      font-size: 20px;
+    }
+    .spine-finder .searchactions div {
+      margin-bottom: 0.5em;
+    }
+    .spine-finder .container {
+      padding: 0.3em;
+    }
+    .spine-finder .left {
+      float: left;
+    }
+  `;
+  var style = document.createElement('style')
+  style.appendChild(document.createTextNode(css))
+  document.head.appendChild(style)
+
+
   window.plugin.spinefinder = new SpineFinderPlugin()
 }
 
