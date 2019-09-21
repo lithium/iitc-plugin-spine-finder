@@ -63,6 +63,27 @@ var drawToolsLayerToJson = function(layer) {
 }
 
 /*
+https://stackoverflow.com/questions/31790344/determine-if-a-point-reside-inside-a-leaflet-polygon
+*/
+function isMarkerInsidePolygon(marker, poly) {
+    var polyPoints = poly.getLatLngs();       
+    var x = marker.getLatLng().lat, y = marker.getLatLng().lng;
+
+    var inside = false;
+    for (var i = 0, j = polyPoints.length - 1; i < polyPoints.length; j = i++) {
+        var xi = polyPoints[i].lat, yi = polyPoints[i].lng;
+        var xj = polyPoints[j].lat, yj = polyPoints[j].lng;
+
+        var intersect = ((yi > y) != (yj > y))
+            && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+        if (intersect) inside = !inside;
+    }
+
+    return inside;
+};
+
+
+/*
  * abstract class UIComponent
       react-esque render() and setState()
       this.render() should be pure (no side effects) and return a Node
@@ -262,7 +283,16 @@ class SpineFinderPlugin extends UIComponent {
         L.geodesicPolyline([spine.portals[1]._latlng, p._latlng]),
       ]
       if (!this.link_crosses(node.getAllLinks(spine), newLinks)) {
-        return this.newNode(spine, portals.filter(x => x.options.guid != p.options.guid), node, p)
+        var poly = L.geodesicPolygon([
+          spine.portals[0]._latlng,
+          spine.portals[1]._latlng,
+          p._latlng
+        ])
+        var possiblePortals = portals.filter(x => 
+          x.options.guid != p.options.guid && isMarkerInsidePolygon(x, poly)
+        )
+        // console.log("newNode possible", p.options.data.name, possiblePortals)
+        return this.newNode(spine, possiblePortals, node, p)
       } else return undefined
     }).filter(_ => _ !== undefined)
     return node
