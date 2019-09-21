@@ -227,8 +227,10 @@ class SpineFinderPlugin extends UIComponent {
     }
   }
 
-  link_crosses(links, link) {
-    return links.map(l => window.plugin.crossLinks.testPolyLine(l, link)).filter(_ => _ === true).length > 0
+  link_crosses(existingLinks, newLinks) {
+    return existingLinks.map(e => 
+      newLinks.map(n => window.plugin.crossLinks.testPolyLine(e, n))
+    ).flat().filter(_ => _ === true).length > 0
   }
 
   runSearch() {
@@ -238,17 +240,16 @@ class SpineFinderPlugin extends UIComponent {
 
     var portals = area.portals.concat()
     var links = []
+    var linkOpts = L.extend({},window.plugin.drawTools.lineOptions)
     while (portals.length > 0) {
       var p = portals.shift()
-      var latlngs = [
-        spine.portals[0]._latlng,
-        p._latlng,
-        spine.portals[1]._latlng,
+      var newLinks = [
+        L.geodesicPolyline([spine.portals[0]._latlng, p._latlng], linkOpts),
+        L.geodesicPolyline([spine.portals[1]._latlng, p._latlng], linkOpts),
       ]
-      var link = L.geodesicPolyline(latlngs, L.extend({},window.plugin.drawTools.lineOptions,{}));
 
-      if (!this.link_crosses(links, link)) {
-        links.push(link)
+      if (!this.link_crosses(links, newLinks)) {
+        links = links.concat(newLinks)
       }
     }
     console.log("SPINE runSearch.complete", links)
