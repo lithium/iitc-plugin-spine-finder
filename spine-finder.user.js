@@ -273,6 +273,10 @@ class SpineFinderPlugin extends UIComponent {
     return {
       spines: [],
       searchAreas: [],
+      resultsTree: undefined,
+      selectedSpine: undefined,
+      selectedArea: undefined,
+      selectedPlan: undefined
     }
   }
 
@@ -415,11 +419,21 @@ class SpineFinderPlugin extends UIComponent {
       html: this.element,
       height: 'auto',
       width: '600px',
-      closeCallback: () => this.dialog = undefined
+      closeCallback: () => this.closeDialog()
     }).dialog('option', 'buttons', {
       'OK': function() { $(this).dialog('close') },
     });
 
+  }
+
+  closeDialog() {
+    this.dialog = undefined
+    this.setState({
+      resultsTree: undefined,
+      selectedSpine: undefined,
+      selectedArea: undefined,
+      selectedPlan: undefined
+    })
   }
 
   render() {
