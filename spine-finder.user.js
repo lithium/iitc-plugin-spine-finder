@@ -150,6 +150,26 @@ class SearchArea {
   }
 }
 
+class TreeNode {
+  constructor(options) {
+    this.parent = options.parent
+    this.portal = options.portal
+    this.children = options.children
+  }
+
+  getAllLinks(spine, linkOpts) {
+    return (this.parent ? this.parent.getAllLinks(spine, linkOpts) : []).concat(this.getLinks(spine, linkOpts))
+  }
+
+  getLinks(spine, linkOpts) {
+    var linkOpts = linkOpts || L.extend({},window.plugin.drawTools.lineOptions)
+    return this.portal ? [
+      L.geodesicPolyline([spine.portals[0]._latlng, this.portal._latlng], linkOpts),
+      L.geodesicPolyline([spine.portals[1]._latlng, this.portal._latlng], linkOpts),
+    ] : []
+  }
+}
+
 /*
  * SpineFinderPlugin 
  *    
@@ -233,28 +253,45 @@ class SpineFinderPlugin extends UIComponent {
     ).flat().filter(_ => _ === true).length > 0
   }
 
+
+  newNode(spine, portals, parent, portal) {
+    var node = new TreeNode({parent: parent, portal: portal})
+    node.children = portals.map(p => {
+      var newLinks = [
+        L.geodesicPolyline([spine.portals[0]._latlng, p._latlng]),
+        L.geodesicPolyline([spine.portals[1]._latlng, p._latlng]),
+      ]
+      if (!this.link_crosses(node.getAllLinks(spine), newLinks)) {
+        return this.newNode(spine, portals.filter(x => x.options.guid != p.options.guid), node, p)
+      } else return undefined
+    }).filter(_ => _ !== undefined)
+    return node
+  }
+
   runSearch() {
     var area = this.state.searchAreas[this.state.selectedArea]
     var spine = this.state.spines[this.state.selectedSpine]
     console.log("SPINE runSearch", spine.portals, area.portals)
 
-    var portals = area.portals.concat()
-    var links = []
-    var linkOpts = L.extend({},window.plugin.drawTools.lineOptions)
-    while (portals.length > 0) {
-      var p = portals.shift()
-      var newLinks = [
-        L.geodesicPolyline([spine.portals[0]._latlng, p._latlng], linkOpts),
-        L.geodesicPolyline([spine.portals[1]._latlng, p._latlng], linkOpts),
-      ]
+    var tree = this.newNode(spine, area.portals)
+    console.log("SPINE tree", tree)
+    // var portals = area.portals.concat()
+    // var links = []
+    // var linkOpts = L.extend({},window.plugin.drawTools.lineOptions)
+    // while (portals.length > 0) {
+    //   var p = portals.shift()
+    //   var newLinks = [
+    //     L.geodesicPolyline([spine.portals[0]._latlng, p._latlng], linkOpts),
+    //     L.geodesicPolyline([spine.portals[1]._latlng, p._latlng], linkOpts),
+    //   ]
 
-      if (!this.link_crosses(links, newLinks)) {
-        links = links.concat(newLinks)
-      }
-    }
-    console.log("SPINE runSearch.complete", links)
-    links.forEach(l => window.plugin.drawTools.drawnItems.addLayer(l))
-    window.plugin.drawTools.save();
+    //   if (!this.link_crosses(links, newLinks)) {
+    //     links = links.concat(newLinks)
+    //   }
+    // }
+    // console.log("SPINE runSearch.complete", links)
+    // links.forEach(l => window.plugin.drawTools.drawnItems.addLayer(l))
+    // window.plugin.drawTools.save();
   }
 
   setupMobile() {
