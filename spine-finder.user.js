@@ -211,18 +211,19 @@ class TreeNode {
   }
 
   getPlans() {
-    var results = []
-    TreeNode.findLeafNodes(this, results)
-    return results.map(r => r.getPlanPortals())
+    var results = this.findLeafNodes()
+    var plans = results.map(r => r.getPlanPortals())
+    return plans.sort((a,b) => b.length - a.length) // sort by number of fields
   }
 
-
-  static findLeafNodes(node, results) {
-    if (node.children && node.children.length > 0) {
-      node.children.map(c => TreeNode.findLeafNodes(c, results))
+  findLeafNodes(results) {
+    var results = results || []
+    if (this.children && this.children.length > 0) {
+      this.children.forEach(c => c.findLeafNodes(results))
     } else {
-      results.push(node)
+      results.push(this)
     }
+    return results
   }
 
   static create(spine, portals, parent, portal) {
