@@ -198,10 +198,12 @@ class TreeNode {
     this.parent = options.parent
     this.portal = options.portal
     this.children = options.children || []
+
+    this._links = this.getLinks();
   }
 
   getParentLinks() {
-    return (this.parent ? this.parent.getParentLinks() : []).concat(this.getLinks())
+    return (this.parent ? this.parent.getParentLinks() : []).concat(this._links)
   }
   getPlanPortals() {
     return (this.parent ? this.parent.getPlanPortals() : []).concat(this.portal ? [this.portal] : [])
