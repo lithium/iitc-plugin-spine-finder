@@ -232,15 +232,16 @@ class TreeNode {
     return results
   }
 
-  static create(spine, portals, parent, portal) {
+  static create(spine, portals, avoidLinks, parent, portal) {
     var node = new TreeNode({spine: spine, parent: parent, portal: portal})
     var spine_portals = spine.portals
+    var avoid = avoidLinks ? Object.values(window.links) : []
     node.children = portals.map(p => {
       var newLinks = [
         L.geodesicPolyline([spine_portals[0]._latlng, p._latlng]),
         L.geodesicPolyline([spine_portals[1]._latlng, p._latlng]),
       ]
-      if (!doLinksCross(node.getParentLinks(), newLinks)) {
+      if (!doLinksCross(avoid.concat(node.getParentLinks()), newLinks)) {
         var poly = L.geodesicPolygon([
           spine_portals[0]._latlng,
           spine_portals[1]._latlng,
@@ -249,7 +250,7 @@ class TreeNode {
         var possiblePortals = portals.filter(x => 
           x.options.guid != p.options.guid && isMarkerInsidePolygon(x, poly)
         )
-        return TreeNode.create(spine, possiblePortals, node, p)
+        return TreeNode.create(spine, possiblePortals, avoidLinks, node, p)
       } else return undefined
     }).filter(_ => _ !== undefined)
     return node
@@ -267,6 +268,7 @@ class SpineFinderPlugin extends UIComponent {
 
     SpineFinderPlugin.portalsLl = {};
     window.addHook('portalAdded', this.handlePortalAdded.bind(this));
+
     window.pluginCreateHook('pluginDrawTools'); // initialize hook if needed first
     window.addHook('pluginDrawTools', this.handleDrawTools.bind(this));
 
@@ -344,13 +346,14 @@ class SpineFinderPlugin extends UIComponent {
     var spine = this.getSelectedSpine()
     console.log("SPINE runSearch", spine.portals, area.portals)
 
-    var tree = TreeNode.create(spine, area.portals)
+    var tree = TreeNode.create(spine, area.portals, this.state.avoidLinks)
     console.log("SPINE tree", tree)
 
     var plans = tree.getPlans()
     console.log("SPINE plans total count", plans.length)
 
     this.setState({
+      totalResults: plans.length,
       plans: plans.slice(0, this.state.maxResults || 25)
     })
   }
@@ -440,7 +443,7 @@ class SpineFinderPlugin extends UIComponent {
       title: "Spine Finder",
       html: this.element,
       height: 'auto',
-      width: '700px',
+      width: '640px',
       closeCallback: () => this.closeDialog()
     }).dialog('option', 'buttons', {
       'OK': function() { $(this).dialog('close') },
@@ -507,7 +510,7 @@ class SpineFinderPlugin extends UIComponent {
   renderResults() {
     var ret = $('<div class="spine-results"></div>');
     if (this.state.plans.length > 0) {
-      ret.append('<h4>Results</h4>')
+      ret.append(`<h4>Results (${this.state.plans.length} of ${this.state.totalResults})</h4>`)
       var results_select = $('<select class="results" size="5"></select>')
       this.state.plans.forEach((plan, idx) => {
         var selected = idx == this.state.selectedPlan ? 'selected="selected"' : ''
