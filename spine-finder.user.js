@@ -276,6 +276,16 @@ class SpineFinderPlugin extends UIComponent {
 
     this.setupDesktop();
     this.setupMobile();
+
+    this.previewLineOptions = {
+      stroke: true,
+      color: "red",
+      weight: 2,
+      opacity: 0.3,
+      fill: false,
+      clickable: true
+    };
+
   }
 
   static initialState() {
@@ -368,12 +378,24 @@ class SpineFinderPlugin extends UIComponent {
     return this.state.selectedPlan ? this.state.plans[this.state.selectedPlan] : undefined
   }
 
+  saveSelectedPlan() {
+    var linkOpts = L.extend({},window.plugin.drawTools.lineOptions)
+    this.drawnLayers.forEach(l => {
+      l.setStyle(linkOpts)
+    })
+    this.drawnLayers = undefined
+
+    window.plugin.drawTools.save();
+    $(this.dialog).dialog('close');
+  }
   drawSelectedPlan() {
+
+    this.clearPlanPreview();
+
     var plan = this.getSelectedPlan()
     var spine = this.getSelectedSpine()
-    console.log("SPINE drawSelected", spine, plan)
 
-    var linkOpts = linkOpts || L.extend({},window.plugin.drawTools.lineOptions)
+    var linkOpts = this.previewLineOptions
     var layers = plan.map(p => 
       L.geodesicPolyline([
         spine.portals[0]._latlng, 
@@ -385,7 +407,7 @@ class SpineFinderPlugin extends UIComponent {
     layers.forEach(l => {
       window.plugin.drawTools.drawnItems.addLayer(l)
     })
-    // window.plugin.drawTools.save();
+    this.drawnLayers = layers
   }
 
   setupMobile() {
@@ -459,6 +481,7 @@ class SpineFinderPlugin extends UIComponent {
       selectedArea: undefined,
       selectedPlan: undefined
     })
+    this.clearPlanPreview()
   }
 
   renderInputs() {
@@ -507,6 +530,18 @@ class SpineFinderPlugin extends UIComponent {
     return ret
   }
 
+  selectPlan(idx) {
+    this.setState({'selectedPlan': idx})
+    this.drawSelectedPlan()
+  }
+
+  clearPlanPreview() {
+    console.log("SPINE clearPlanPreview", this.drawnLayers)
+    if (this.drawnLayers) {
+      this.drawnLayers.forEach(l => window.plugin.drawTools.drawnItems.removeLayer(l))
+    }
+  }
+
   renderResults() {
     var ret = $('<div class="spine-results"></div>');
     if (this.state.plans.length > 0) {
@@ -517,7 +552,7 @@ class SpineFinderPlugin extends UIComponent {
         var names = plan.map(p => p.options.data.title).join(", ")
         results_select.append(`<option value="${idx}" ${selected}>${plan.length} layers</option>`)
       })
-      results_select.change(() => this.setState({'selectedPlan': results_select.val()}))
+      results_select.change(() => this.selectPlan(results_select.val()))
       ret.append(results_select)
 
       var plan = this.getSelectedPlan()
@@ -531,8 +566,8 @@ class SpineFinderPlugin extends UIComponent {
         })
         container.append(list)
 
-        var button = $('<button class="submit">Draw</button>')
-        button.click(() => this.drawSelectedPlan())
+        var button = $('<button class="submit">Save</button>')
+        button.click(() => this.saveSelectedPlan())
         container.append(button)
 
         ret.append(container)
@@ -592,8 +627,10 @@ SpineFinderPlugin.boot = function() {
       float: left;
     }
 
-    .spine-finder ul.portals {
+    .spine-finder ol.portals {
       width: 20em;
+      margin: 0;
+      padding: 0 0 0 .6em;
     }
   `;
   var style = document.createElement('style')
