@@ -82,6 +82,23 @@ function isMarkerInsidePolygon(marker, poly) {
     return inside;
 };
 
+function flattenDeep(array) {
+  var flattend = [];
+  (function flat(array) {
+    array.forEach(function(el) {
+      if (Array.isArray(el)) flat(el);
+      else flattend.push(el);
+    });
+  })(array);
+  return flattend;
+}
+
+function doLinksCross(existingLinks, newLinks) {
+    return existingLinks.map(e => 
+      newLinks.map(n => window.plugin.crossLinks.testPolyLine(e, n))
+    ).flat().filter(_ => _ === true).length > 0
+  }
+
 
 /*
  * abstract class UIComponent
@@ -189,6 +206,14 @@ class TreeNode {
       L.geodesicPolyline([spine.portals[1]._latlng, this.portal._latlng], linkOpts),
     ] : []
   }
+
+  get childPortals() {
+    return this.children.map(c => [c.portal].concat(c.childPortals))
+  }
+
+  getPlans() {
+    return this.childPortals.map(p => flattenDeep(p))
+  }
 }
 
 /*
@@ -268,12 +293,6 @@ class SpineFinderPlugin extends UIComponent {
     }
   }
 
-  link_crosses(existingLinks, newLinks) {
-    return existingLinks.map(e => 
-      newLinks.map(n => window.plugin.crossLinks.testPolyLine(e, n))
-    ).flat().filter(_ => _ === true).length > 0
-  }
-
 
   newNode(spine, portals, parent, portal) {
     var node = new TreeNode({parent: parent, portal: portal})
@@ -282,7 +301,7 @@ class SpineFinderPlugin extends UIComponent {
         L.geodesicPolyline([spine.portals[0]._latlng, p._latlng]),
         L.geodesicPolyline([spine.portals[1]._latlng, p._latlng]),
       ]
-      if (!this.link_crosses(node.getAllLinks(spine), newLinks)) {
+      if (!doLinksCross(node.getAllLinks(spine), newLinks)) {
         var poly = L.geodesicPolygon([
           spine.portals[0]._latlng,
           spine.portals[1]._latlng,
@@ -291,7 +310,6 @@ class SpineFinderPlugin extends UIComponent {
         var possiblePortals = portals.filter(x => 
           x.options.guid != p.options.guid && isMarkerInsidePolygon(x, poly)
         )
-        // console.log("newNode possible", p.options.data.name, possiblePortals)
         return this.newNode(spine, possiblePortals, node, p)
       } else return undefined
     }).filter(_ => _ !== undefined)
@@ -305,23 +323,12 @@ class SpineFinderPlugin extends UIComponent {
 
     var tree = this.newNode(spine, area.portals)
     console.log("SPINE tree", tree)
-    // var portals = area.portals.concat()
-    // var links = []
-    // var linkOpts = L.extend({},window.plugin.drawTools.lineOptions)
-    // while (portals.length > 0) {
-    //   var p = portals.shift()
-    //   var newLinks = [
-    //     L.geodesicPolyline([spine.portals[0]._latlng, p._latlng], linkOpts),
-    //     L.geodesicPolyline([spine.portals[1]._latlng, p._latlng], linkOpts),
-    //   ]
+    var plans = tree.childPortals.map(p => flattenDeep(p).map(p => p.options.data.title))
+    console.log("SPINE plans", plans)
 
-    //   if (!this.link_crosses(links, newLinks)) {
-    //     links = links.concat(newLinks)
-    //   }
-    // }
-    // console.log("SPINE runSearch.complete", links)
-    // links.forEach(l => window.plugin.drawTools.drawnItems.addLayer(l))
-    // window.plugin.drawTools.save();
+    this.setState({
+      resultsTree: tree
+    })
   }
 
   setupMobile() {
@@ -405,6 +412,17 @@ class SpineFinderPlugin extends UIComponent {
     })
     areas_select.change(() => this.setState({'selectedArea': areas_select.val()}))
     ret.append(areas_select)
+
+    if (this.state.resultsTree !== undefined) {
+      ret.append('<h4>Results</h4>')
+      var results_select = $('<select class="results" size="10"></select>')
+      this.state.resultsTree.getPlans().forEach((plan, idx) => {
+        var selected = false
+        var names = plan.map(p => p.options.data.title).join(", ")
+        results_select.append(`<option value="${idx}" ${selected}>${plan.length} layers: ${names}</option>`)
+      })
+      ret.append(results_select)
+    }
 
     if (this.state.selectedSpine !== undefined && this.state.selectedArea !== undefined) {
       var button = $('<button>Search</button>')
