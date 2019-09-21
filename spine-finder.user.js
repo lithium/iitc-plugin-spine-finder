@@ -152,8 +152,12 @@ class Spine {
 
   get portals() {
     if (window.portals) {
-      return this.layer.latLngs.map(ll => SpineFinderPlugin.portalByLl(ll))
-    } else return []
+      var portals = this.layer.latLngs.map(ll => SpineFinderPlugin.portalByLl(ll))
+      if (portals.filter(_ => _ !== undefined).length == 2) {
+        return portals 
+      } 
+    }
+    return this.layer.latLngs.map(ll => L.marker(ll))
   }
 
   get polyline() {
@@ -228,15 +232,16 @@ class TreeNode {
 
   static create(spine, portals, parent, portal) {
     var node = new TreeNode({spine: spine, parent: parent, portal: portal})
+    var spine_portals = spine.portals
     node.children = portals.map(p => {
       var newLinks = [
-        L.geodesicPolyline([spine.portals[0]._latlng, p._latlng]),
-        L.geodesicPolyline([spine.portals[1]._latlng, p._latlng]),
+        L.geodesicPolyline([spine_portals[0]._latlng, p._latlng]),
+        L.geodesicPolyline([spine_portals[1]._latlng, p._latlng]),
       ]
       if (!doLinksCross(node.getParentLinks(), newLinks)) {
         var poly = L.geodesicPolygon([
-          spine.portals[0]._latlng,
-          spine.portals[1]._latlng,
+          spine_portals[0]._latlng,
+          spine_portals[1]._latlng,
           p._latlng
         ])
         var possiblePortals = portals.filter(x => 
@@ -440,6 +445,7 @@ class SpineFinderPlugin extends UIComponent {
   closeDialog() {
     this.dialog = undefined
     this.setState({
+      plans: [],
       selectedSpine: undefined,
       selectedArea: undefined,
       selectedPlan: undefined
