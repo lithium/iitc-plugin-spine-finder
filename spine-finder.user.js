@@ -36,31 +36,6 @@ var llstring = function(latlng) {
   }
 }
 
-var drawToolsLayerToJson = function(layer) {
-  if (layer._mRadius !== undefined) {
-    return {
-      type: "circle",
-      latLng: layer._latlng,
-      radius: layer._mRadius,
-      color: layer.options.color
-    }
-  }
-  else if (layer._latlngs.length == 2) {
-    return {
-      type: "polyline", 
-      latLngs: layer._latlngs,
-      color: layer.options.color
-    }
-  }
-  else if (layer._latlngs.length > 2) {
-    return {
-      type: "polygon",
-      latLngs: layer._latlngs,
-      color: layer.options.color
-    }
-  }
-  return layer
-}
 
 /*
 https://stackoverflow.com/questions/31790344/determine-if-a-point-reside-inside-a-leaflet-polygon
@@ -145,45 +120,42 @@ class Spine {
   }
 
   get label() {
-    var src = SpineFinderPlugin.portalNameByLl(this.layer.latLngs[0])
-    var dest = SpineFinderPlugin.portalNameByLl(this.layer.latLngs[1])
+    var src = SpineFinderPlugin.portalNameByLl(this.layer.getLatLngs()[0])
+    var dest = SpineFinderPlugin.portalNameByLl(this.layer.getLatLngs()[1])
     return `${src} <-> ${dest}`
   }
 
   get portals() {
     if (window.portals) {
-      var portals = this.layer.latLngs.map(ll => SpineFinderPlugin.portalByLl(ll))
+      var portals = this.layer.getLatLngs().map(ll => SpineFinderPlugin.portalByLl(ll))
       if (portals.filter(_ => _ !== undefined).length == 2) {
         return portals 
       } 
     }
-    return this.layer.latLngs.map(ll => L.marker(ll))
+    return this.layer.getLatLngs().map(ll => L.marker(ll))
   }
 
-  get polyline() {
-    return L.polyline(this.layer.latLngs)
-  }
 }
 
 class SearchArea {
-  constructor(circle) {
-    this.region = circle
+  constructor(layer) {
+    this.layer = layer
   }
 
   get areaInKm() {
-    return (Math.PI * Math.pow(this.region.radius, 2)) / 1000 / 1000
+    return (Math.PI * Math.pow(this.layer._mRadius, 2)) / 1000 / 1000
   }
 
   get label() {
-    return `${this.portals.length} Portals ${this.areaInKm.toFixed(1)}km @${llstring(this.region.latLng)}`
+    return `${this.portals.length} Portals ${this.areaInKm.toFixed(1)}km @${llstring(this.layer.getLatLng())}`
   }
 
   get portals() {
     if (window.portals) {
       return Object.getOwnPropertyNames(window.portals).map(guid => {
         var portal = window.portals[guid];
-        var distance = portal._latlng.distanceTo(this.region.latLng)
-        if (distance < this.region.radius) {
+        var distance = portal._latlng.distanceTo(this.layer.getLatLng())
+        if (distance < this.layer._mRadius) {
           return portal
         } else return undefined
       }).filter(_ => _ !== undefined)
@@ -329,24 +301,38 @@ class SpineFinderPlugin extends UIComponent {
       return;
     }
     if (payload.event === "layerCreated") {
-      this.addDrawToolsLayer(drawToolsLayerToJson(payload.layer))
+      this.addDrawToolsLayer(payload.layer)
+    }
+    else if (payload.event === "layersDeleted" || 
+             payload.event === "import" || 
+             payload.event === "layersEdited" || 
+             payload.event === "clear" || 
+             payload.event === "layersSnappedToPortals") {
+      this.resetDrawTools();
     }
   }
 
-  loadDrawTools(drawToolsItems) {
-    drawToolsItems = drawToolsItems || JSON.parse(localStorage['plugin-draw-tools-layer'] || "[]")
-    drawToolsItems.forEach(l => this.addDrawToolsLayer(l))
+  resetDrawTools() {
+    this.setState({
+      searchAreas: [],
+      spines: [],
+    })
+    this.loadDrawTools()
+  }
+  loadDrawTools() {
+    var layers = window.plugin.drawTools.drawnItems.getLayers()
+    layers.forEach(l => this.addDrawToolsLayer(l))
   }
   addDrawToolsLayer(layer) {
-    // console.log("SPINE addLayer", layer)
+    console.log("SPINE addLayer", layer)
 
-    if (layer.type === "polyline") {
-      this.setState({
-        spines: this.state.spines.concat([new Spine(layer)])
-      })
-    } else if (layer.type == "circle") {
+    if (layer._mRadius !== undefined) {
       this.setState({
         searchAreas: this.state.searchAreas.concat([new SearchArea(layer)])
+      })
+    } else if (layer.getLatLngs().length == 2) {
+      this.setState({
+        spines: this.state.spines.concat([new Spine(layer)])
       })
     }
   }
