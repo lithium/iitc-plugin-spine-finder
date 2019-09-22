@@ -368,6 +368,7 @@ class SpineFinderPlugin extends UIComponent {
     var linkOpts = L.extend({},window.plugin.drawTools.lineOptions)
     this.drawnLayers.forEach(l => {
       l.setStyle(linkOpts)
+      runHooks('pluginDrawTools',{event:'layerCreated',layer:l});
     })
     this.drawnLayers = undefined
 
