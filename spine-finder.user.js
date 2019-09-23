@@ -36,6 +36,9 @@ var llstring = function(latlng) {
   }
 }
 
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
 
 /*
 https://stackoverflow.com/questions/31790344/determine-if-a-point-reside-inside-a-leaflet-polygon
@@ -208,28 +211,37 @@ class TreeNode {
   }
 
   static create(spine, portals, avoidLinks, parent, portal) {
-    var node = new TreeNode({spine: spine, parent: parent, portal: portal})
-    var spine_portals = spine.portals
-    var avoid = avoidLinks ? Object.values(window.links) : []
-    node.children = portals.map(p => {
-      var newLinks = [
-        L.geodesicPolyline([spine_portals[0]._latlng, p._latlng]),
-        L.geodesicPolyline([spine_portals[1]._latlng, p._latlng]),
-      ]
-      if (!doLinksCross(avoid.concat(node.getParentLinks()), newLinks)) {
-        var poly = L.geodesicPolygon([
-          spine_portals[0]._latlng,
-          spine_portals[1]._latlng,
-          p._latlng
-        ])
-        var possiblePortals = portals.filter(x => 
-          x.options.guid != p.options.guid && isMarkerInsidePolygon(x, poly)
-        )
-        return TreeNode.create(spine, possiblePortals, avoidLinks, node, p)
-      } else return undefined
-    }).filter(_ => _ !== undefined)
-    return node
+    return new Promise(async (resolve, reject) => {
+      await sleep(10)
+
+      var node = new TreeNode({spine: spine, parent: parent, portal: portal})
+      var spine_portals = spine.portals
+      var avoid = avoidLinks ? Object.values(window.links) : []
+      var childPromises = portals.map(p => {
+        var newLinks = [
+          L.geodesicPolyline([spine_portals[0]._latlng, p._latlng]),
+          L.geodesicPolyline([spine_portals[1]._latlng, p._latlng]),
+        ]
+        if (!doLinksCross(avoid.concat(node.getParentLinks()), newLinks)) {
+          var poly = L.geodesicPolygon([
+            spine_portals[0]._latlng,
+            spine_portals[1]._latlng,
+            p._latlng
+          ])
+          var possiblePortals = portals.filter(x => 
+            x.options.guid != p.options.guid && isMarkerInsidePolygon(x, poly)
+          )
+          return TreeNode.create(spine, possiblePortals, avoidLinks, node, p)
+        } else return undefined
+      }).filter(_ => _ !== undefined)
+      // console.log("SPINE await")
+      node.children = await Promise.all(childPromises)
+      // console.log("SPINE done")
+      return resolve(node)
+
+    })
   }
+
 }
 
 /*
@@ -350,19 +362,25 @@ class SpineFinderPlugin extends UIComponent {
     }, () => {
 
       setTimeout(() => {
+
         var tree = TreeNode.create(spine, area.portals, this.state.avoidLinks)
         console.log("SPINE tree", tree)
 
+        tree.then((val) => {
+          var plans = val.getPlans()
+          console.log("SPINE plans total count", plans.length)
 
-        var plans = tree.getPlans()
-        console.log("SPINE plans total count", plans.length)
+          this.setState({
+            loading: false,
+            totalResults: plans.length,
+            plans: plans.slice(0, this.state.maxResults || 25)
+          })
 
-        this.setState({
-          loading: false,
-          totalResults: plans.length,
-          plans: plans.slice(0, this.state.maxResults || 25)
         })
-      }, 10)
+
+      }, 100)
+
+
     })
   }
 
