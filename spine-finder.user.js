@@ -101,9 +101,12 @@ class UIComponent {
     this.update()
   }
 
-  setState(newState) {
+  setState(newState, callback) {
     Object.assign(this.state, newState)
     this.update()
+    if (callback) {
+      callback()
+    }
   }
 
   update() {
@@ -342,15 +345,24 @@ class SpineFinderPlugin extends UIComponent {
     var spine = this.getSelectedSpine()
     console.log("SPINE runSearch", spine.portals, area.portals)
 
-    var tree = TreeNode.create(spine, area.portals, this.state.avoidLinks)
-    console.log("SPINE tree", tree)
-
-    var plans = tree.getPlans()
-    console.log("SPINE plans total count", plans.length)
-
     this.setState({
-      totalResults: plans.length,
-      plans: plans.slice(0, this.state.maxResults || 25)
+      'loading': true
+    }, () => {
+
+      setTimeout(() => {
+        var tree = TreeNode.create(spine, area.portals, this.state.avoidLinks)
+        console.log("SPINE tree", tree)
+
+
+        var plans = tree.getPlans()
+        console.log("SPINE plans total count", plans.length)
+
+        this.setState({
+          loading: false,
+          totalResults: plans.length,
+          plans: plans.slice(0, this.state.maxResults || 25)
+        })
+      }, 10)
     })
   }
 
@@ -531,6 +543,11 @@ class SpineFinderPlugin extends UIComponent {
 
   renderResults() {
     var ret = $('<div class="spine-results"></div>');
+
+    if (this.state.loading) {
+      ret.append('<div class="lds-hourglass"></div>')
+    } 
+    else
     if (this.state.plans.length > 0) {
       ret.append(`<h4>Results (${this.state.plans.length} of ${this.state.totalResults})</h4>`)
       var results_select = $('<select class="results" size="5"></select>')
@@ -619,6 +636,40 @@ SpineFinderPlugin.boot = function() {
       margin: 0;
       padding: 0 0 0 .6em;
     }
+
+
+    .lds-hourglass {
+      display: inline-block;
+      position: relative;
+      width: 64px;
+      height: 64px;
+    }
+    .lds-hourglass:after {
+      content: " ";
+      display: block;
+      border-radius: 50%;
+      width: 0;
+      height: 0;
+      margin: 6px;
+      box-sizing: border-box;
+      border: 26px solid #fff;
+      border-color: #fff transparent #fff transparent;
+      animation: lds-hourglass 1.2s infinite;
+    }
+    @keyframes lds-hourglass {
+      0% {
+        transform: rotate(0);
+        animation-timing-function: cubic-bezier(0.55, 0.055, 0.675, 0.19);
+      }
+      50% {
+        transform: rotate(900deg);
+        animation-timing-function: cubic-bezier(0.215, 0.61, 0.355, 1);
+      }
+      100% {
+        transform: rotate(1800deg);
+      }
+    }
+
   `;
   var style = document.createElement('style')
   style.appendChild(document.createTextNode(css))
