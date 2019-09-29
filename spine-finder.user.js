@@ -551,8 +551,14 @@ class SpineFinderPlugin extends UIComponent {
   }
 
   selectPlan(idx) {
-    this.setState({'selectedPlan': idx})
+    // avoid a setState to not rerender the scrolling results container
+    if (this.state.selectedPlan !== undefined) {
+      $(`.results .row[data-value="${this.state.selectedPlan}"]`).removeClass('selected')
+    }
+    this.state.selectedPlan = idx
+    $(`.results .row[data-value="${idx}"]`).addClass('selected')
     this.drawSelectedPlan()
+    this.updateDetails()
   }
 
   clearPlanPreview() {
@@ -571,7 +577,6 @@ class SpineFinderPlugin extends UIComponent {
     else
     if (this.state.plans.length > 0) {
       ret.append(`<h4>Results (${this.state.plans.length} of ${this.state.totalResults})</h4>`)
-      // var results_select = $('<select class="results" size="5"></select>')
       var results_select = $('<div class="list results"></div>')
       this.state.plans.forEach((plan, idx) => {
         var selected = idx == this.state.selectedPlan ? 'selected' : ''
@@ -582,42 +587,47 @@ class SpineFinderPlugin extends UIComponent {
       })
       ret.append(results_select)
 
-      var plan = this.getSelectedPlan()
-      if (plan !== undefined) {
-        ret.append('<h4>Plan Details</h4>')
-        var container = $('<div class="container"></div>')
+      this.planDetails = $('<div></div>')
+      ret.append(this.planDetails)
+      this.updateDetails()
 
-        var list = $('<ol class="portals"></ol>')
-        plan.forEach((p, idx) => {
-          list.append(`<li>${p.options.data.title}</li>`)
-        })
-        container.append(list)
-
-        var button = $('<button class="submit">Save</button>')
-        button.click(() => this.saveSelectedPlan())
-        container.append(button)
-
-        ret.append(container)
-      }
+      
     }
  
     return ret
+  }
+
+  updateDetails() {
+    var div = this.planDetails
+    if (!div) return;
+
+    div.empty()
+
+    var plan = this.getSelectedPlan()
+    if (plan !== undefined) {
+      div.append('<h4>Plan Details</h4>')
+      var container = $('<div class="container"></div>')
+
+      var list = $('<ol class="portals"></ol>')
+      plan.forEach((p, idx) => {
+        list.append(`<li>${p.options.data.title}</li>`)
+      })
+      container.append(list)
+
+      var button = $('<button class="submit">Save</button>')
+      button.click(() => this.saveSelectedPlan())
+      container.append(button)
+
+      div.append(container)
+    }
+
   }
 
   render() {
     var ret = $('<div class="spine-finder"></div>');
 
     ret.append(this.renderInputs())
-
     ret.append(this.renderResults())
-
-    setTimeout(() => {
-      var f = $(`.results .row[data-value="${this.state.selectedPlan}"]`)
-      console.log("SPINE select", f)
-      if (f.length > 0) {
-        f[0].scrollIntoView()
-      }
-    }, 100)
 
     return ret[0]
   }
