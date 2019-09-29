@@ -1,6 +1,6 @@
 // ==UserScript==
-// @id             iitc-plugin-spiner-finder@nobody889
-// @name           IITC plugin: Spine Finder
+// @id             iitc-plugin-field-finder@nobody889
+// @name           IITC plugin: Field Finder
 // @category       Info
 // @version        0.1.0
 // @namespace      https://github.com/lithium/iitc-plugin-spine-finder
@@ -126,14 +126,14 @@ class Spine {
   }
 
   get label() {
-    var src = SpineFinderPlugin.portalNameByLl(this.layer.getLatLngs()[0])
-    var dest = SpineFinderPlugin.portalNameByLl(this.layer.getLatLngs()[1])
+    var src = FieldFinderPlugin.portalNameByLl(this.layer.getLatLngs()[0])
+    var dest = FieldFinderPlugin.portalNameByLl(this.layer.getLatLngs()[1])
     return `${src} <-> ${dest}`
   }
 
   get portals() {
     if (window.portals) {
-      var portals = this.layer.getLatLngs().map(ll => SpineFinderPlugin.portalByLl(ll))
+      var portals = this.layer.getLatLngs().map(ll => FieldFinderPlugin.portalByLl(ll))
       if (portals.filter(_ => _ !== undefined).length == 2) {
         return portals 
       } 
@@ -245,15 +245,15 @@ class TreeNode {
 }
 
 /*
- * SpineFinderPlugin 
+ * FieldFinderPlugin 
  *    
  */
 
-class SpineFinderPlugin extends UIComponent {
+class FieldFinderPlugin extends UIComponent {
   constructor(props) {
     super(props)
 
-    SpineFinderPlugin.portalsLl = {};
+    FieldFinderPlugin.portalsLl = {};
     window.addHook('portalAdded', this.handlePortalAdded.bind(this));
 
     window.pluginCreateHook('pluginDrawTools'); // initialize hook if needed first
@@ -290,24 +290,24 @@ class SpineFinderPlugin extends UIComponent {
   }
 
   static portalByLl(latlng) {
-    return SpineFinderPlugin.portalsLl[llstring(latlng)]
+    return FieldFinderPlugin.portalsLl[llstring(latlng)]
   }
   static portalNameByLl(latlng) {
     var ll = llstring(latlng)
-    var portal = SpineFinderPlugin.portalsLl[ll]
+    var portal = FieldFinderPlugin.portalsLl[ll]
     return (portal && portal.options.data.title) ? portal.options.data.title : ll
   }
 
 
   setupDesktop() {
-    var a = $('<a tabindex="0">Spine Finder</a>').click(this.showDialog.bind(this));
+    var a = $('<a tabindex="0">Field Finder</a>').click(this.showDialog.bind(this));
     $('#toolbox').append(a);
   }
 
   handlePortalAdded(data) {
     var portal = data.portal;
     var ll = llstring( portal._latlng );
-    SpineFinderPlugin.portalsLl[ll] = portal
+    FieldFinderPlugin.portalsLl[ll] = portal
     this.setState({});  // TODO: only rerender if needs updating
   }
 
@@ -376,6 +376,8 @@ class SpineFinderPlugin extends UIComponent {
   generateFanFieldPlan(anchor, portals) {
     var anchorll = anchor.getLatLng()
     portals = portals.filter(p => p.options.guid != anchor.options.guid)
+
+    portals = portals.sort((a,b) => a.getLatLng().lat - b.getLatLng().lat)
     // start with spines of fan
     var links = portals.map(p => L.polyline([anchorll, p.getLatLng()], this.previewLineOptions))
 
@@ -483,7 +485,7 @@ class SpineFinderPlugin extends UIComponent {
       this.mobilePane.appendChild(this.element)
 
       var button = this.mobilePane.appendChild(document.createElement('button'));
-      button.textContext = 'Spine Finder';
+      button.textContext = 'Field Finder';
       button.addEventListener('click', function(){ this.showDialog(); }.bind(this), false);
 
       this.tabs = this.mobilePane.appendChild(document.createElement('div'));
@@ -507,7 +509,7 @@ class SpineFinderPlugin extends UIComponent {
           },
         });
       
-      android.addPane('plugin-spinefinder', 'Spine Finder', 'ic_spinefinder');
+      android.addPane('plugin-spinefinder', 'Field Finder', 'ic_spinefinder');
       addHook('paneChanged', this.handlePaneChanged.bind(this));
     }
   }
@@ -528,7 +530,7 @@ class SpineFinderPlugin extends UIComponent {
     this.setState({})
 
     this.dialog = dialog({
-      title: "Spine Finder",
+      title: "Field Finder",
       html: this.element,
       height: 'auto',
       width: '750px',
@@ -710,7 +712,7 @@ class SpineFinderPlugin extends UIComponent {
 }
 
 // plugin boot - called by iitc
-SpineFinderPlugin.boot = function() {
+FieldFinderPlugin.boot = function() {
 
   var css = `
 
@@ -809,13 +811,13 @@ SpineFinderPlugin.boot = function() {
   document.head.appendChild(style)
 
 
-  window.plugin.spinefinder = new SpineFinderPlugin()
+  window.plugin.spinefinder = new FieldFinderPlugin()
 }
 
 
 
 // PLUGIN END //////////////////////////////////////////////////////////
-var setup = SpineFinderPlugin.boot;
+var setup = FieldFinderPlugin.boot;
 
 setup.info = plugin_info; //add the script info data to the function as a property
 if(!window.bootPlugins) window.bootPlugins = [];
