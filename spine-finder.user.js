@@ -385,13 +385,13 @@ class SpineFinderPlugin extends UIComponent {
   }
 
   getSelectedArea() {
-    return this.state.selectedArea ? this.state.searchAreas[this.state.selectedArea] : undefined
+    return this.state.selectedArea !== undefined ? this.state.searchAreas[this.state.selectedArea] : undefined
   }
   getSelectedSpine() {
-    return this.state.selectedSpine ? this.state.spines[this.state.selectedSpine] : undefined
+    return this.state.selectedSpine !== undefined ? this.state.spines[this.state.selectedSpine] : undefined
   }
   getSelectedPlan() {
-    return this.state.selectedPlan ? this.state.plans[this.state.selectedPlan] : undefined
+    return this.state.selectedPlan !== undefined ? this.state.plans[this.state.selectedPlan] : undefined
   }
 
   saveSelectedPlan() {
@@ -482,7 +482,7 @@ class SpineFinderPlugin extends UIComponent {
       title: "Spine Finder",
       html: this.element,
       height: 'auto',
-      width: '640px',
+      width: '750px',
       closeCallback: () => this.closeDialog()
     }).dialog('option', 'buttons', {
       'OK': function() { $(this).dialog('close') },
@@ -505,22 +505,25 @@ class SpineFinderPlugin extends UIComponent {
     var ret = $('<div class="spine-inputs"></div>');
 
     ret.append('<h4>Spines</h4>')
-    var spines_select = $('<select class="spines" size="5"></select>')
+    var spines_select = $('<div class="list spines"></div>')
     this.state.spines.forEach((spine,idx) => {
-      var selected = idx == this.state.selectedSpine ? 'selected="selected"' : ''
-      spines_select.append(`<option value="${idx}" ${selected}>${spine.label}</option>`)
+      var selected = idx == this.state.selectedSpine ? 'selected' : ''
+      var row = $(`<div data-value="${idx}" class="row ${selected}">${spine.label}</div>`)
+      row.click(() => this.setState({'selectedSpine': idx}) )
+      spines_select.append(row)
     })
-    spines_select.change(() => this.setState({'selectedSpine': spines_select.val()}))
     ret.append(spines_select)
 
     ret.append('<h4>Search Areas</h4>')
-    var areas_select = $('<select class="areas" size="5"></select>')
+    var areas_select = $('<div class="list areas"></div>')
     this.state.searchAreas.forEach((area,idx) => {
-      var selected = idx == this.state.selectedArea ? 'selected="selected"' : ''
-      areas_select.append(`<option value="${idx}" ${selected}>${area.label}</option>`)
+      var selected = idx == this.state.selectedArea ? 'selected' : ''
+      var row = $(`<div data-value="${idx}" class="row ${selected}">${area.label}</div>`)
+      row.click(() => this.setState({'selectedArea': idx}) )
+      areas_select.append(row)
     })
-    areas_select.change(() => this.setState({'selectedArea': areas_select.val()}))
     ret.append(areas_select)
+
 
     if (this.state.selectedSpine !== undefined && this.state.selectedArea !== undefined) {
       var container = $('<div class="container"></div>')
@@ -568,13 +571,15 @@ class SpineFinderPlugin extends UIComponent {
     else
     if (this.state.plans.length > 0) {
       ret.append(`<h4>Results (${this.state.plans.length} of ${this.state.totalResults})</h4>`)
-      var results_select = $('<select class="results" size="5"></select>')
+      // var results_select = $('<select class="results" size="5"></select>')
+      var results_select = $('<div class="list results"></div>')
       this.state.plans.forEach((plan, idx) => {
-        var selected = idx == this.state.selectedPlan ? 'selected="selected"' : ''
+        var selected = idx == this.state.selectedPlan ? 'selected' : ''
         var names = plan.map(p => p.options.data.title).join(", ")
-        results_select.append(`<option value="${idx}" ${selected}>${plan.length} layers</option>`)
+        var row = $(`<div data-value="${idx}" class="row ${selected}">${idx+1}. ${plan.length} layers</div>`)
+        row.click(() => this.selectPlan(idx))
+        results_select.append(row)
       })
-      results_select.change(() => this.selectPlan(results_select.val()))
       ret.append(results_select)
 
       var plan = this.getSelectedPlan()
@@ -606,6 +611,14 @@ class SpineFinderPlugin extends UIComponent {
 
     ret.append(this.renderResults())
 
+    setTimeout(() => {
+      var f = $(`.results .row[data-value="${this.state.selectedPlan}"]`)
+      console.log("SPINE select", f)
+      if (f.length > 0) {
+        f[0].scrollIntoView()
+      }
+    }, 100)
+
     return ret[0]
   }
 
@@ -616,6 +629,24 @@ class SpineFinderPlugin extends UIComponent {
 SpineFinderPlugin.boot = function() {
 
   var css = `
+
+    .spine-finder .list.results {
+      height: 10em;
+      overflow-y: scroll;
+    }
+
+    .spine-finder .row {
+      height: 1em;
+      margin: 4px;
+      padding: 2px;
+      cursor: pointer;
+      width: 23em;
+      overflow: hidden;
+    }
+    .spine-finder .row.selected {
+      background-color: red;
+    }
+
     .spine-finder h4 { 
       font-size: 20px; 
       margin-bottom: .6em;
