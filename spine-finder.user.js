@@ -282,6 +282,7 @@ class SpineFinderPlugin extends UIComponent {
       plans: [],
       maxResults: 25,
       avoidLinks: false, 
+      selectedAlgo: 'herringbone',
       selectedSpine: undefined,
       selectedArea: undefined,
       selectedPlan: undefined
@@ -353,9 +354,22 @@ class SpineFinderPlugin extends UIComponent {
   }
 
   runSearch() {
+    if (this.state.selectedAlgo == "herringbone") {
+      this.runHerringboneSearch()
+    } else if (this.state.selectedAlgo == "maxfield") {
+      this.runMaxfieldSearch()
+    }
+  }
+
+  runMaxfieldSearch() {
+    var area = this.getSelectedArea()
+    console.log("SPINE maxfield runSearch", area.portals)
+  }
+
+  runHerringboneSearch() {
     var area = this.getSelectedArea()
     var spine = this.getSelectedSpine()
-    console.log("SPINE runSearch", spine.portals, area.portals)
+    console.log("SPINE herringbone runSearch", spine.portals, area.portals)
 
     this.setState({
       'loading': true
@@ -373,8 +387,8 @@ class SpineFinderPlugin extends UIComponent {
           this.setState({
             loading: false,
             totalResults: plans.length,
-            plans: plans.slice(0, this.state.maxResults || 25)
-          })
+            plans: plans.slice(0, this.state.maxResults || 25),
+          }, () => this.selectPlan(0))
 
         })
 
@@ -503,16 +517,29 @@ class SpineFinderPlugin extends UIComponent {
 
   renderInputs() {
     var ret = $('<div class="spine-inputs"></div>');
+    ret.append('<h4>Algorithm</h4>')
+    var algo_select = $(`<select class="algos">
+      <option value="herringbone" ${this.state.selectedAlgo == "herringbone" ? 'selected="selected"' :''}>Herringbone</option>
+      <option value="maxfield" ${this.state.selectedAlgo == "maxfield" ? 'selected="selected"' :''}>Max Field</option>
+      </select>`)
+    algo_select.change(() => this.setState({
+      'selectedAlgo': algo_select.val(),
+      'selectedPlan': undefined,
+      'plans': [],
+    }))
+    ret.append(algo_select)
 
-    ret.append('<h4>Spines</h4>')
-    var spines_select = $('<div class="list spines"></div>')
-    this.state.spines.forEach((spine,idx) => {
-      var selected = idx == this.state.selectedSpine ? 'selected' : ''
-      var row = $(`<div data-value="${idx}" class="row ${selected}">${spine.label}</div>`)
-      row.click(() => this.setState({'selectedSpine': idx}) )
-      spines_select.append(row)
-    })
-    ret.append(spines_select)
+    if (this.state.selectedAlgo == "herringbone") {
+      ret.append('<h4>Spines</h4>')
+      var spines_select = $('<div class="list spines"></div>')
+      this.state.spines.forEach((spine,idx) => {
+        var selected = idx == this.state.selectedSpine ? 'selected' : ''
+        var row = $(`<div data-value="${idx}" class="row ${selected}">${spine.label}</div>`)
+        row.click(() => this.setState({'selectedSpine': idx}) )
+        spines_select.append(row)
+      })
+      ret.append(spines_select)
+    }
 
     ret.append('<h4>Search Areas</h4>')
     var areas_select = $('<div class="list areas"></div>')
@@ -525,7 +552,7 @@ class SpineFinderPlugin extends UIComponent {
     ret.append(areas_select)
 
 
-    if (this.state.selectedSpine !== undefined && this.state.selectedArea !== undefined) {
+    if (this.formValid()) {
       var container = $('<div class="container"></div>')
 
       var div = $('<div class="left searchactions"></div>')
@@ -548,6 +575,16 @@ class SpineFinderPlugin extends UIComponent {
     }
 
     return ret
+  }
+
+  formValid() {
+    if (this.state.selectedAlgo == "herringbone") {
+      return (this.state.selectedSpine !== undefined && this.state.selectedArea !== undefined)
+    }
+    else if (this.state.selectedAlgo == "maxfield") {
+      return (this.state.selectedArea !== undefined)
+    }
+    return false
   }
 
   selectPlan(idx) {
