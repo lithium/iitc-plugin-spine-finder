@@ -356,14 +356,42 @@ class SpineFinderPlugin extends UIComponent {
   runSearch() {
     if (this.state.selectedAlgo == "herringbone") {
       this.runHerringboneSearch()
-    } else if (this.state.selectedAlgo == "maxfield") {
-      this.runMaxfieldSearch()
+    } else if (this.state.selectedAlgo == "fanfield") {
+      this.runFanfieldSearch()
     }
   }
 
-  runMaxfieldSearch() {
+  runFanfieldSearch() {
     var area = this.getSelectedArea()
-    console.log("SPINE maxfield runSearch", area.portals)
+    console.log("SPINE fanfield runSearch", area.portals)
+    var plans = area.portals.map(p => this.generateFanFieldPlan(p, area.portals))
+
+    this.setState({
+      loading: false,
+      totalResults: plans.length,
+      plans: plans.slice(0, this.state.maxResults || 25),
+    }, () => this.selectPlan(0))
+  }
+
+  generateFanFieldPlan(anchor, portals) {
+    var anchorll = anchor.getLatLng()
+    portals = portals.filter(p => p.options.guid != anchor.options.guid)
+    // start with spines of fan
+    var links = portals.map(p => L.polyline([anchorll, p.getLatLng()], this.previewLineOptions))
+
+    for (var i=1; i < portals.length; i++) {
+      var p = portals[i]
+
+      for (var j=i-1; j >= 0; j--) {
+        var q = portals[j]
+        var newLink = L.polyline([p.getLatLng(), q.getLatLng()], this.previewLineOptions)
+
+        if (!doLinksCross(links, [newLink])) {
+          links.push(newLink)
+        }
+      }
+    }
+    return links
   }
 
   runHerringboneSearch() {
@@ -424,16 +452,23 @@ class SpineFinderPlugin extends UIComponent {
     this.clearPlanPreview();
 
     var plan = this.getSelectedPlan()
-    var spine = this.getSelectedSpine()
+    var layers = []
 
-    var linkOpts = this.previewLineOptions
-    var layers = plan.map(p => 
-      L.geodesicPolyline([
-        spine.portals[0]._latlng, 
-        p._latlng,
-        spine.portals[1]._latlng
-      ], linkOpts)
-    )
+    if (this.state.selectedAlgo == "herringbone") {
+      var spine = this.getSelectedSpine()
+
+      var linkOpts = this.previewLineOptions
+      var layers = plan.map(p => 
+        L.geodesicPolyline([
+          spine.portals[0]._latlng, 
+          p._latlng,
+          spine.portals[1]._latlng
+        ], linkOpts)
+      )
+    }
+    else if (this.state.selectedAlgo == "fanfield") {
+      layers = plan
+    }
 
     layers.forEach(l => {
       window.plugin.drawTools.drawnItems.addLayer(l)
@@ -520,7 +555,7 @@ class SpineFinderPlugin extends UIComponent {
     ret.append('<h4>Algorithm</h4>')
     var algo_select = $(`<select class="algos">
       <option value="herringbone" ${this.state.selectedAlgo == "herringbone" ? 'selected="selected"' :''}>Herringbone</option>
-      <option value="maxfield" ${this.state.selectedAlgo == "maxfield" ? 'selected="selected"' :''}>Max Field</option>
+      <option value="fanfield" ${this.state.selectedAlgo == "fanfield" ? 'selected="selected"' :''}>Fan Field</option>
       </select>`)
     algo_select.change(() => this.setState({
       'selectedAlgo': algo_select.val(),
@@ -581,7 +616,7 @@ class SpineFinderPlugin extends UIComponent {
     if (this.state.selectedAlgo == "herringbone") {
       return (this.state.selectedSpine !== undefined && this.state.selectedArea !== undefined)
     }
-    else if (this.state.selectedAlgo == "maxfield") {
+    else if (this.state.selectedAlgo == "fanfield") {
       return (this.state.selectedArea !== undefined)
     }
     return false
@@ -617,7 +652,7 @@ class SpineFinderPlugin extends UIComponent {
       var results_select = $('<div class="list results"></div>')
       this.state.plans.forEach((plan, idx) => {
         var selected = idx == this.state.selectedPlan ? 'selected' : ''
-        var names = plan.map(p => p.options.data.title).join(", ")
+        // var names = plan.map(p => p.options.data.title).join(", ")
         var row = $(`<div data-value="${idx}" class="row ${selected}">${idx+1}. ${plan.length} layers</div>`)
         row.click(() => this.selectPlan(idx))
         results_select.append(row)
@@ -647,7 +682,9 @@ class SpineFinderPlugin extends UIComponent {
 
       var list = $('<ol class="portals"></ol>')
       plan.forEach((p, idx) => {
-        list.append(`<li>${p.options.data.title}</li>`)
+        if (p.options.data) {
+          list.append(`<li>${p.options.data.title}</li>`)
+        }
       })
       container.append(list)
 
