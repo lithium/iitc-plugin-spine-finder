@@ -460,13 +460,21 @@ class FieldFinderPlugin extends UIComponent {
       var spine = this.getSelectedSpine()
 
       var linkOpts = this.previewLineOptions
-      var layers = plan.map(p => 
-        L.geodesicPolyline([
-          spine.portals[0]._latlng, 
-          p._latlng,
-          spine.portals[1]._latlng
-        ], linkOpts)
-      )
+      var prev = undefined
+      var layers = plan.map(p => {
+        var ret = [
+          L.geodesicPolyline([
+            spine.portals[0]._latlng, 
+            p._latlng,
+            spine.portals[1]._latlng
+          ], linkOpts)
+        ]
+        if (this.state.connectSpine && prev) {
+          ret.push(L.geodesicPolyline([p._latlng, prev._latlng], linkOpts))
+        }
+        prev = p
+        return ret
+      }).flat()
     }
     else if (this.state.selectedAlgo == "fanfield") {
       layers = plan
@@ -576,6 +584,12 @@ class FieldFinderPlugin extends UIComponent {
         spines_select.append(row)
       })
       ret.append(spines_select)
+
+      var checked = this.state.connectSpine ? 'checked="checked"' : ""
+      var check = $(`<input id="spine-finder-connect" type="checkbox" ${checked}><label for="spine-finder-connect">Connect Spine Portals</label>`)
+      check.change(() => this.setState({'connectSpine': check.is(':checked')}))
+      ret.append($('<div></div>').append(check))
+
     }
 
     ret.append('<h4>Search Areas</h4>')
