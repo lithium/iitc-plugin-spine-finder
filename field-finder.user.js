@@ -733,8 +733,12 @@ class FieldFinderPlugin extends UIComponent {
   render() {
     var ret = $('<div class="spine-finder"></div>');
 
-    ret.append(this.renderInputs())
-    ret.append(this.renderResults())
+    if (!(window.plugin.drawTools && window.plugin.crossLinks)) {
+      ret = $('<div>You must have drawtools and crosslinks installed.</div>')
+    } else {
+      ret.append(this.renderInputs())
+      ret.append(this.renderResults())
+    }
 
     return ret[0]
   }

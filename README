@@ -1,8 +1,10 @@
-
+Requirements:
+	IITC
+	iitc-plugin-drawtools
+	iitc-plugin-crosslinks
 
 
 Inputs:
-
 	spine line - list all drawn line segments to choose from
 	set of portals - a circle/polygon and the portals contained within it
 
@@ -12,3 +14,4 @@ Outputs:
 
 
 When a plan is selected, draw using drawtools
+
