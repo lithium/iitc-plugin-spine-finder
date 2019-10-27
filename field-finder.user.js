@@ -148,22 +148,37 @@ class SearchArea {
     this.layer = layer
   }
 
-  get areaInKm() {
-    return (Math.PI * Math.pow(this.layer._mRadius, 2)) / 1000 / 1000
+  get readableArea() {
+    var area = L.GeometryUtil.geodesicArea(this.layer.getLatLngs())
+    return L.GeometryUtil.readableArea(area)
+  }
+
+  get center() {
+    if (this.layer._mRadius) { 
+      return this.layer.getLatLng()
+    } else {
+      return this.layer.getBounds().getCenter();
+    }
   }
 
   get label() {
-    return `${this.portals.length} Portals ${this.areaInKm.toFixed(1)}km @${llstring(this.layer.getLatLng())}`
+    return `${this.portals.length} Portals ${this.readableArea} @${llstring(this.center)}`
   }
 
   get portals() {
     if (window.portals) {
       return Object.getOwnPropertyNames(window.portals).map(guid => {
         var portal = window.portals[guid];
-        var distance = portal._latlng.distanceTo(this.layer.getLatLng())
-        if (distance < this.layer._mRadius) {
-          return portal
-        } else return undefined
+
+        if (this.layer._mRadius) {
+          var distance = portal._latlng.distanceTo(this.layer.getLatLng())
+          if (distance < this.layer._mRadius) {
+            return portal
+          } else return undefined
+        } else {
+          return isMarkerInsidePolygon(portal, this.layer) ? portal : undefined
+        }
+
       }).filter(_ => _ !== undefined)
     }
     else return []
@@ -343,15 +358,16 @@ class FieldFinderPlugin extends UIComponent {
   addDrawToolsLayer(layer) {
     console.log("SPINE addLayer", layer)
 
-    if (layer._mRadius !== undefined) {
-      this.setState({
-        searchAreas: this.state.searchAreas.concat([new SearchArea(layer)])
-      })
-    } else if (layer.getLatLngs().length == 2) {
+    if (layer.getLatLngs().length == 2) {
       this.setState({
         spines: this.state.spines.concat([new Spine(layer)])
       })
     }
+    else if (layer instanceof L.Polygon) {
+      this.setState({
+        searchAreas: this.state.searchAreas.concat([new SearchArea(layer)])
+      })
+    } 
   }
 
   runSearch() {
