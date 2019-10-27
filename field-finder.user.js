@@ -270,7 +270,8 @@ class FieldFinderPlugin extends UIComponent {
       weight: 2,
       opacity: 0.3,
       fill: false,
-      clickable: true
+      clickable: true,
+      dashArray: "10, 10"
     };
 
   }
@@ -439,7 +440,7 @@ class FieldFinderPlugin extends UIComponent {
   }
 
   saveSelectedPlan() {
-    var linkOpts = L.extend({},window.plugin.drawTools.lineOptions)
+    var linkOpts = L.extend({},window.plugin.drawTools.lineOptions, {'dashArray': undefined})
     this.drawnLayers.forEach(l => {
       l.setStyle(linkOpts)
       runHooks('pluginDrawTools',{event:'layerCreated',layer:l});
