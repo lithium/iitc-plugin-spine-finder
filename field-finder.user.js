@@ -2,7 +2,7 @@
 // @id             iitc-plugin-field-finder@nobody889
 // @name           IITC plugin: Field Finder
 // @category       Info
-// @version        0.1.0
+// @version        0.5.0
 // @namespace      https://github.com/lithium/iitc-plugin-spine-finder
 // @updateURL      @@UPDATEURL@@
 // @downloadURL    @@DOWNLOADURL@@
@@ -558,7 +558,7 @@ class FieldFinderPlugin extends UIComponent {
       title: "Field Finder",
       html: this.element,
       height: 'auto',
-      width: '750px',
+      width: '400px',
       closeCallback: () => this.closeDialog()
     }).dialog('option', 'buttons', {
       'OK': function() { $(this).dialog('close') },
@@ -692,7 +692,7 @@ class FieldFinderPlugin extends UIComponent {
       })
       ret.append(results_select)
 
-      this.planDetails = $('<div></div>')
+      this.planDetails = $('<div class="plan-details"></div>')
       ret.append(this.planDetails)
       this.updateDetails()
 
@@ -710,8 +710,12 @@ class FieldFinderPlugin extends UIComponent {
 
     var plan = this.getSelectedPlan()
     if (plan !== undefined) {
-      div.append('<h4>Plan Details</h4>')
+      div.append('<h4 style="text-align: center">Portals</h4>')
       var container = $('<div class="container"></div>')
+
+      var button = $('<button class="submit">Save</button>')
+      button.click(() => this.saveSelectedPlan())
+      container.append(button)
 
       var list = $('<ol class="portals"></ol>')
       plan.forEach((p, idx) => {
@@ -721,9 +725,6 @@ class FieldFinderPlugin extends UIComponent {
       })
       container.append(list)
 
-      var button = $('<button class="submit">Save</button>')
-      button.click(() => this.saveSelectedPlan())
-      container.append(button)
 
       div.append(container)
     }
@@ -736,8 +737,12 @@ class FieldFinderPlugin extends UIComponent {
     if (!(window.plugin.drawTools && window.plugin.crossLinks)) {
       ret = $('<div>You must have drawtools and crosslinks installed.</div>')
     } else {
-      ret.append(this.renderInputs())
-      ret.append(this.renderResults())
+      if (this.state.loading || this.state.plans.length > 0) {
+        ret.append(this.renderResults())
+      } else {
+        ret.append(this.renderInputs())
+
+      }
     }
 
     return ret[0]
@@ -773,11 +778,8 @@ FieldFinderPlugin.boot = function() {
       margin-bottom: .6em;
     }
     .spine-finder .spine-inputs {
-      float: left;
-      margin-right: 1em;
     }
     .spine-finder .spine-results {
-      float: left;
     }
 
     .spine-finder select {
@@ -796,6 +798,13 @@ FieldFinderPlugin.boot = function() {
     }
     .spine-finder .container {
       padding: 0.3em;
+    }
+    .spine-finder .container button {
+      float: left;
+    }
+    .spine-finder .container ol {
+      float: left;
+      margin-left: 1em;
     }
     .spine-finder .left {
       float: left;
